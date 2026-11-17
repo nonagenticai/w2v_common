@@ -123,11 +123,12 @@ jobs:
       - name: pytest
         run: uv run pytest -q
 
+      # The repo's own gate, not `uv export | pip-audit` with installation: this lock
+      # deliberately overrides miniopy-async's `certifi<2026` cap (see [tool.uv] in
+      # pyproject.toml), so a resolving audit fails with ResolutionImpossible while the
+      # pinned set is fine. `--disable-pip --no-deps` audits the exact exported pins.
       - name: pip-audit
-        run: |
-          set -euo pipefail
-          uv export --frozen --all-extras --no-emit-project -o "$RUNNER_TEMP/requirements.txt"
-          uvx --from pip-audit pip-audit -r "$RUNNER_TEMP/requirements.txt"
+        run: bash scripts/pip-audit.sh
 
   # Build (and on main, publish) the image. OFF by default: enable per repo with the
   # repository variable `PUBLISH_IMAGE=true`.
