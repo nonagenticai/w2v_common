@@ -1,0 +1,30 @@
+{
+  "_source": "w2v_orchestrator PR #1150 src/api/routes/internal_provider_slots.py (_view + error bodies), slot_payload.slot_payload; copied 2026-10-22. Update BOTH sides together.",
+  "tenant": {
+    "source": "tenant",
+    "slot": "llm",
+    "kind": "openai-compatible",
+    "base_url": "https://llm.tenant.example/v1",
+    "model": "gpt-4.1-mini",
+    "options": {},
+    "secret": null,
+    "ref": {"connection_id": "0199a1b2-2222-7000-8000-000000000001", "version": 3}
+  },
+  "deployment": {
+    "source": "deployment",
+    "slot": "tts",
+    "kind": "nonagentic",
+    "base_url": null,
+    "model": null,
+    "options": {},
+    "secret": null,
+    "ref": null
+  },
+  "errors": [
+    {"status": 403, "body": {"detail": {"code": "cell_lane_required", "message": "This endpoint is reachable only on the in-cell service lane."}}, "expect": "config"},
+    {"status": 422, "body": {"detail": {"code": "unknown_slot", "message": "not a resolvable provider slot"}}, "expect": "config"},
+    {"status": 404, "body": {"detail": {"code": "run_not_found", "message": "run not found"}}, "expect": "run_not_found"},
+    {"status": 403, "body": {"detail": {"code": "byo_provider_required", "modality": "tts", "slots": "llm,tts,image", "message": "Configure your own TTS provider to continue"}}, "expect": "required"},
+    {"status": 409, "body": {"detail": {"code": "provider_unavailable", "slot": "tts", "message": "Provider 'tts' is unavailable: purged"}}, "expect": "unavailable"}
+  ]
+}

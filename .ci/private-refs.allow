@@ -1,0 +1,14 @@
+# Allowlist for scripts/ci/no-private-refs.sh — a security decision, not a convenience.
+#
+# These files ARE the SSRF / private-range guard and its test fixtures. The `.internal`
+# shapes and CGNAT addresses below name no host of this deployment: they are the values
+# the guard must REJECT, and the tests assert that rejection. Blocklisting them is the
+# opposite of publishing topology (same reasoning as mlx_inference's CGNAT allowlist).
+# Service names are generic placeholders (blob/svc/db), never this estate's hosts.
+src/w2v_common/net/safe_fetch.py:\.internal
+src/w2v_common/net/safe_fetch.py:100\.64\.
+src/w2v_common/providers/_http.py:100\.64\.
+tests/test_net_safe_fetch.py:\.internal
+tests/test_net_safe_fetch.py:100\.64\.
+tests/test_net_safe_fetch.py:100\.127\.255\.255
+tests/test_provider_slots.py:100\.64\.

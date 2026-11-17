@@ -1,0 +1,269 @@
+[project]
+license = "Apache-2.0"
+name = "w2v-common"
+version = "0.115.4"
+description = "Shared library for w2v microservices (auth, cache, database, config, middleware)"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.135.0",
+
+    "uvicorn[standard]>=0.41.0",
+
+    "psycopg[binary,pool]>=3.3.0",
+
+    "sqlalchemy[asyncio]>=2.0.48",
+
+    "pydantic>=2.12.0",
+
+    "pydantic-settings>=2.14.2",  # GHSA-4xgf-cpjx-pc3j fixed in 2.14.2
+
+    "python-dotenv>=1.2.0",
+
+    "redis>=7.3.0",
+
+    "prometheus-client>=0.24.0",
+
+    "httpx>=0.28.0",
+
+    "cachetools>=7.0.0",
+
+    "defusedxml>=0.7.1",
+
+    # LLM_BACKEND=vllm (clients/vllm_direct.py): Draft 2020-12 validation of
+    # the guided-decoding reply, and the vendored WM seed prompts
+    # (clients/vllm_worker_defaults.yaml, shipped as package data).
+    "jsonschema>=4.25,<5",
+    "pyyaml>=6.0.2",
+
+    "PyJWT[crypto]>=2.15.1",
+
+    # Arrives here directly and via PyJWT[crypto]. The floor is the durable
+    # binding, not the lock: `uv.lock` is a point-in-time resolution, so the
+    # next unrelated `uv lock` is free to walk an under-declared dependency back
+    # DOWN, silently, with green CI. Two CVEs are in play and the floor must
+    # clear the LATER one:
+    #   - GHSA-537c-gmf6-5ccf — the original reason this line existed.
+    #   - CVE-2026-69247 (GHSA-g6cj-pr64-35w5) — introduced in 44.0.0, fixed in
+    #     50.0.0. This is what makes the old >=48.0.1 actively wrong: it sat
+    #     BELOW the fix and therefore explicitly PERMITTED the vulnerable range
+    #     44.0.0..49.x while its comment cited only the older advisory.
+    # 50.0.0 clears both. Matches the floor analysis_service records (#175/#176).
+    "cryptography>=50.0.0",
+
+    # Transitive via httpx — pin to escape CVE-2026-44431/44432
+    "urllib3>=2.8.0",
+
+    # Transitive via fastapi/starlette — pinned as a security FLOOR so every
+    # consuming w2v service inherits the CVE fix on a w2v_common relock.
+    "starlette>=1.3.1",  # CVE-2026-54282 / CVE-2026-54283
+    "python-multipart>=0.0.31",  # CVE-2026-53538 / 53539 / 53540
+
+]
+
+[project.optional-dependencies]
+# structlog is NOT a core dependency — only services that render logs through
+# structlog (e.g. tts_service) pull it in, then register
+# ``w2v_common.observability.structlog_bridge.add_request_id`` in their chain.
+# Declared as an extra so consumers can pin the floor via ``w2v-common[structlog]``.
+structlog = ["structlog>=25.5.0"]
+
+[build-system]
+# ⛔ EXACT pin, deliberately — this is the one place in this file where a floor
+# is WRONG. hatchling stamps its own version into `.dist-info/WHEEL`
+# (`Generator: hatchling X.Y.Z`) and into the RECORD line for that file, so the
+# build backend's version is *payload*: the wheel's sha256 moves every time
+# hatchling releases, with zero change to library content. The archetype's
+# `build-dist` action pins SOURCE_DATE_EPOCH and repacks the sdist canonically
+# so that "identical source -> byte-identical artifacts" holds across MACHINES;
+# an unpinned backend broke the same promise across TIME, and the post-merge
+# same-version-different-content guard correctly refused the republish (#192).
+#
+# A range would not buy the property. The measured divergence was
+# 1.32.1 (published 0.80.2, 2026-09-16) -> 1.32.4 (2026-09-20), i.e. entirely
+# INSIDE a `>=1.32,<1.33` ceiling; hatchling shipped four 1.32.x releases in six
+# weeks. Only `==` makes the emitted bytes a function of this repo's contents.
+#
+# This is the `.pre-commit-config.yaml` convention (every hook at an exact
+# `rev:`), not the `[project].dependencies` convention (security floors, no
+# upper bounds — see the miniopy-async/certifi note under [tool.uv]). A build
+# backend is tooling, not a runtime dependency: nothing downstream resolves it.
+#
+# ⚠️ To move it: bump BOTH this pin and `[project].version` in the same commit.
+# Changing the pin alone republishes an existing version with different bytes,
+# which is exactly the failure this pin exists to prevent.
+requires = ["hatchling==1.32.4"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/w2v_common"]
+
+# The sdist must contain LIBRARY CONTENT ONLY. Everything below is repo hygiene:
+# it changes on commits that do not touch the shipped package, which produced a
+# byte-identical WHEEL but a DIFFERING SDIST at an unchanged version — and
+# The public publish workflow rejects that, reddening the post-merge publish
+# on main for a commit that changed no library code at all (PR #112, 0.58.4).
+# Excluding it here kills the recurrence class, not just the one-off.
+# (`.gitignore` is force-included by hatchling and cannot be excluded — it is the
+# one residual repo file in the sdist, and it changes far more rarely than CI.)
+[tool.hatch.build.targets.sdist]
+exclude = [
+    ".github",
+    ".pre-commit-config.yaml",
+    ".secrets.baseline",
+    ".pip-audit-ignore",
+    "uv.lock",  # dev-only resolution; consumers resolve from their own lock
+    "CLAUDE.md",
+    "scripts",
+    "sync-common.sh",
+    # `tests` belongs in this list by the same rule the block above states, and
+    # its absence is what has reddened main three merges running: cdf3a1f, 6e07b5d
+    # and e66bf9d each touched only tests/ and CI, shipped a byte-identical WHEEL
+    # (which packages `src/w2v_common` alone and never contained tests), and a
+    # DIFFERING SDIST at an unchanged 0.67.10 — so pypiserver correctly refused
+    # the republish and the release lane has been down since. Shipping tests in
+    # the sdist but not the wheel was already inconsistent; the test that broke
+    # it last even covers `scripts/consumer_bump_gate.py`, which is itself
+    # excluded, so the sdist carried a test for code it does not contain.
+    "tests",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.0",
+
+    "pytest-asyncio>=1.3.0",
+
+    "pytest-cov>=7.0.0",
+
+    "pytest-mock>=3.15.0",
+
+    "httpx>=0.28.0",
+    "ruff>=0.15.0",
+
+    "ty>=0.0.23",
+
+    "fakeredis>=2.34.0",
+
+    "pip-audit>=2.10.0",
+    # Transitive via pip-audit -> pip-api -> pip. PYSEC-2026-3721 affects
+    # pip < 26.2; declared explicitly so a future `uv lock` cannot walk the
+    # lock back into the vulnerable range with pip-audit still green.
+    "pip>=26.2",
+
+    "detect-secrets>=1.5.0",
+    "bandit>=1.9.4",
+    "respx>=0.21.0",
+    # exercise the structlog_bridge processor (structlog is an optional extra,
+    # not a core dep — see [project.optional-dependencies])
+    "structlog>=25.5.0",
+    # storage: the MinIO backend imports miniopy-async lazily (no runtime dep in
+    # w2v_common — consumers declare it). Needed here to exercise the minio path.
+    "miniopy-async>=1.21",
+
+    # --- Security floor on a transitive dependency ---
+    # aiohttp is NOT in this library's runtime closure. It reaches the lock
+    # ONLY through this dev group, via miniopy-async (-> aiohttp, aiohttp-retry),
+    # which is itself dev-only here because the MinIO backend imports it lazily
+    # and consumers declare it themselves. So the floor belongs HERE, not in
+    # [project].dependencies: putting it there would add a brand-new *runtime*
+    # dependency to all 17 consuming repos for a package none of them get from
+    # w2v_common today. Sibling services that DO carry aiohttp at runtime (e.g.
+    # analysis_service #175/#176) correctly declare it in [project] instead.
+    #
+    # The reason for declaring it at all is the same as everywhere else: the
+    # lock is a point-in-time resolution and an undeclared transitive can drift
+    # back down on the next unrelated `uv lock`. This is also the environment
+    # `pip-audit` scans in CI, so an undeclared drift here is exactly what would
+    # regress. aiohttp 3.14.1 was flagged by CVE-2026-59881 + CVE-2026-69243
+    # (fixed in 3.14.2) and CVE-2026-69244 (fixed in 3.14.3); 3.14.3 clears all
+    # three.
+    "aiohttp>=3.14.3",
+]
+
+[tool.uv]
+override-dependencies = [
+    # miniopy-async (1.23.5, the LATEST) caps the CA-certificate bundle:
+    #   certifi>=2025.1.31,<2026.0.0
+    # That is lazy upper-bounding, not a real incompatibility -- certifi's entire
+    # public API is where()/contents() and has been stable for years, while the
+    # package's whole purpose is to ship CURRENT roots. Left alone the cap pins
+    # every MinIO-using repo in this fleet to a trust store from Nov 2025, and no
+    # relock cadence can move it (verified by making uv name the constraint).
+    #
+    # NOT overriding miniopy-async's argon2-cffi<24.0.0 alongside it: that is a
+    # MAJOR bump with real API surface, so it needs its own testing rather than
+    # riding along with a data-only package.
+    "certifi>=2026.7.22",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "I", "N", "W", "UP", "ANN", "B", "BLE", "A", "S", "C901",
+    "RUF", "RET", "SIM", "ASYNC", "PTH", "TID251",
+]
+# ANN401 (BARE `Any` in a signature) is NOT globally ignored. It is enforced
+# repo-wide via the shrinking per-file-ignore RATCHET below: files that still
+# carry a bare `Any` signature are grandfathered, and each typing PR deletes its
+# file(s) from that list. Bare `Any` can only go DOWN; a new one in a cleaned
+# file fails CI. NESTED `Any` (`dict[str, Any]`) — which ANN401 does NOT flag —
+# is governed by the count ratchet in tests/test_any_ratchet.py.
+ignore = ["E501", "B008"]
+
+# uuid7 is the id standard (stdlib, py3.14). TID251 bans `uuid4` in production
+# code via ruff — enforced in CI (`ruff check .`), not only local pre-commit.
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"uuid.uuid4".msg = "uuid7 is the w2v id standard — use uuid.uuid7() (stdlib, py3.14)."
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "S104", "S105", "S106", "S107", "S108", "ANN", "PTH", "TID251"]
+
+# ── ANN401 ratchet (see [tool.ruff.lint].ignore note) ─────────────────────────
+# These files still carry `Any` in a function signature. Do NOT add to this list.
+# When you type a file's seam with pydantic models, DELETE its line here — that
+# re-enables ANN401 for the file and locks the win in. Target: empty.
+"src/w2v_common/asgi/error_envelope.py" = ["ANN401"]
+"src/w2v_common/asgi/middleware.py" = ["ANN401"]
+"src/w2v_common/auth/keycloak.py" = ["ANN401"]
+"src/w2v_common/cache/redis_client.py" = ["ANN401"]
+"src/w2v_common/clients/base.py" = ["ANN401"]
+"src/w2v_common/clients/url_graph.py" = ["ANN401"]
+"src/w2v_common/config/base.py" = ["ANN401"]
+"src/w2v_common/middleware/audit.py" = ["ANN401"]
+"src/w2v_common/middleware/idempotency.py" = ["ANN401"]
+"src/w2v_common/net/safe_fetch.py" = ["ANN401"]
+"src/w2v_common/observability/structlog_bridge.py" = ["ANN401"]
+"src/w2v_common/storage/service.py" = ["ANN401"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+# `scripts` is on the path so tests/test_consumer_bump_gate.py can import the
+# ci-cd rollout-vs-failure discriminator. It is CI tooling, not library API, so
+# it deliberately stays OUT of src/ (and out of the sdist, see the exclude list
+# above) rather than shipping to 17 consumers.
+pythonpath = ["src", "scripts"]
+
+[tool.ty.environment]
+python-version = "3.14"
+# Mirrors pytest's `pythonpath` above so the repo-wide `ty check .` (the
+# typecheck-tests job) can resolve tests/test_consumer_bump_gate.py's import
+# of the ci-cd gate module. Without it the test file is unresolved-import.
+extra-paths = ["scripts"]
+
+[tool.ty.rules]
+unresolved-import = "error"
+unresolved-reference = "error"
+unresolved-attribute = "error"
+possibly-unresolved-reference = "error"
+possibly-missing-attribute = "error"
+missing-argument = "error"
+invalid-argument-type = "error"
+invalid-return-type = "error"
+
+[tool.coverage.report]
+fail_under = 80
