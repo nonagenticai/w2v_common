@@ -71,7 +71,7 @@ from w2v_common.discovery import service_url
 # services compose the shared sub-configs into their own Settings,
 # then build the app from the shared factory
 app = create_app(...)
-tts = service_url("tts")   # resolves the peer's k8s/Tailnet URL
+tts = service_url("tts")  # resolves the peer's k8s/Tailnet URL
 ```
 
 ## Architecture
