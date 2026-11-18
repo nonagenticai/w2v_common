@@ -371,7 +371,7 @@ def record_cell_unminted(reason: str) -> None:
     """Best-effort: telemetry must never fail a request."""
     try:
         cell_token_unminted_total.labels(reason=reason).inc()
-    except Exception:
+    except Exception:  # noqa: BLE001
         logger.debug("cell_token_unminted_metric_failed", exc_info=True)
 
 
@@ -379,7 +379,7 @@ def record_cell_rejection(reason: str, scope: str = SCOPE_UNKNOWN) -> None:
     """Best-effort: telemetry must never fail a request."""
     try:
         cell_jwt_rejected_total.labels(reason=reason, scope=scope).inc()
-    except Exception:
+    except Exception:  # noqa: BLE001
         logger.debug("cell_jwt_rejected_metric_failed", exc_info=True)
 
 
@@ -387,7 +387,7 @@ def record_dual_both(caller: str, scope: str = CellScope.TENANT.value) -> None:
     """Best-effort: telemetry must never fail a request."""
     try:
         cell_dual_both_total.labels(caller=caller, scope=scope).inc()
-    except Exception:
+    except Exception:  # noqa: BLE001
         logger.debug("cell_dual_both_metric_failed", exc_info=True)
 
 
@@ -395,7 +395,7 @@ def record_unsigned_attribution(caller: str) -> None:
     """Best-effort: telemetry must never fail a request."""
     try:
         cell_unsigned_attribution_total.labels(caller=caller).inc()
-    except Exception:
+    except Exception:  # noqa: BLE001
         logger.debug("cell_unsigned_attribution_metric_failed", exc_info=True)
 
 
@@ -403,7 +403,7 @@ def record_legacy_delegation(caller: str) -> None:
     """Best-effort: telemetry must never fail a request."""
     try:
         cell_legacy_delegation_total.labels(caller=caller).inc()
-    except Exception:
+    except Exception:  # noqa: BLE001
         logger.debug("cell_legacy_delegation_metric_failed", exc_info=True)
 
 
@@ -411,7 +411,7 @@ def record_cell_auth(lane: str, scope: str = SCOPE_NONE) -> None:
     """Best-effort: telemetry must never fail a request."""
     try:
         cell_auth_total.labels(lane=lane, scope=scope).inc()
-    except Exception:
+    except Exception:  # noqa: BLE001
         logger.debug("cell_auth_metric_failed", exc_info=True)
 
 
@@ -441,7 +441,7 @@ def precreate_cell_auth_series(delegating_subjects: Iterable[str] = ()) -> None:
             cell_jwt_rejected_total.labels(reason=reason, scope=scope)
         for caller in (*LEGACY_DELEGATION_FIXED_CALLERS, *delegating_subjects):
             cell_legacy_delegation_total.labels(caller=caller)
-    except Exception:
+    except Exception:  # noqa: BLE001
         logger.debug("cell_auth_precreate_failed", exc_info=True)
 
 
