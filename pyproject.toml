@@ -142,7 +142,9 @@ dev = [
 
     "ty>=0.0.23",
 
-    "fakeredis>=2.34.0",
+    # >=2.40.0 required with redis 8: 2.35.1 ignores decode_responses and hgetall
+    # returns bytes (measured: redis 8.1.0 + fakeredis 2.35.1 -> {b'f1': b'v1'}).
+    "fakeredis>=2.40.0",
 
     "pip-audit>=2.10.0",
     # Transitive via pip-audit -> pip-api -> pip. PYSEC-2026-3721 affects
