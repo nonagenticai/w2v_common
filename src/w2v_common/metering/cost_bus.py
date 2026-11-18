@@ -332,7 +332,7 @@ def _set_metering_enabled(value: int) -> None:
     """Best-effort arm/disarm observation — must never break boot."""
     try:
         metering_enabled.set(value)
-    except Exception:  # noqa: BLE001 — telemetry must never fail startup
+    except Exception:
         logger.debug("metering_enabled_metric_failed value=%s", value, exc_info=True)
 
 
@@ -348,7 +348,7 @@ def _record_outcome(service_key: str, outcome: str) -> None:
     """Best-effort outcome observation — must never break an emit."""
     try:
         cost_events_total.labels(service_key=service_key, outcome=outcome).inc()
-    except Exception:  # noqa: BLE001 — telemetry must never fail a billable request
+    except Exception:
         logger.debug("cost_event_metric_failed outcome=%s", outcome, exc_info=True)
 
 
