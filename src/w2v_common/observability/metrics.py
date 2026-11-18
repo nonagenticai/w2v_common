@@ -97,7 +97,7 @@ def record_downstream_call(target: str, method: str, outcome: str, elapsed_secon
         m = method.upper()
         downstream_calls_total.labels(target=target, method=m, outcome=outcome).inc()
         downstream_latency_seconds.labels(target=target, method=m).observe(elapsed_seconds)
-    except Exception:  # noqa: BLE001 — see the contract above; must never mask the real error
+    except Exception:  # noqa: BLE001
         logger.debug(
             "record_downstream_call_failed target=%r method=%r outcome=%r",
             target,
@@ -138,7 +138,7 @@ def record_modality_resolve_failopen(modality: str, reason: str) -> None:
     """
     try:
         modality_resolve_failopen_total.labels(modality=modality, reason=reason).inc()
-    except Exception:  # noqa: BLE001 — see the contract above; observation must never raise
+    except Exception:  # noqa: BLE001
         logger.debug(
             "record_modality_resolve_failopen_failed modality=%r reason=%r",
             modality,

@@ -606,7 +606,7 @@ def _record_effective_tenant_rejected() -> None:
     """
     try:
         auth_effective_tenant_rejected_total.inc()
-    except Exception:  # noqa: BLE001 — telemetry must never fail a request
+    except Exception:  # noqa: BLE001
         logger.debug("effective_tenant_rejected_metric_failed", exc_info=True)
 
 
@@ -656,7 +656,7 @@ def _record_effective_tenant_missing(subject: str) -> None:
     """Best-effort observation — must never break a request."""
     try:
         auth_effective_tenant_missing_total.labels(subject=subject).inc()
-    except Exception:  # noqa: BLE001 — telemetry must never fail a request
+    except Exception:  # noqa: BLE001
         logger.debug("effective_tenant_missing_metric_failed", exc_info=True)
 
 
@@ -903,7 +903,7 @@ def _tenant_or_unauthorized(
 
 def _resolve_jwt_tenant(
     request: Request, claims: Mapping[str, Any], sub: str
-) -> _uuid.UUID | None | Response:
+) -> _uuid.UUID | Response | None:
     """The JWT lane's tenant: a UUID, ``None`` (opt-out, claim absent), or the 401.
 
     P2 tenancy opt-out (``AUTH_JWT_TENANT_REQUIRED=false``, orchestrator only):

@@ -209,7 +209,7 @@ def set_identity_context(
     license_id: str | None,
     subject_id: str | None,
     caller_license_token: str | None = None,
-    tenant_source: TenantSource | None | _Keep = KEEP_TENANT_SOURCE,
+    tenant_source: TenantSource | _Keep | None = KEEP_TENANT_SOURCE,
     *,
     actor_id: str | None = None,
 ) -> None:

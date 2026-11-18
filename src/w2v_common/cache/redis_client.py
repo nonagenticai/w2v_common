@@ -148,9 +148,14 @@ class RedisClient:
             value = value.model_dump(mode="json")
         return json.dumps(value)
 
-    def _deserialize(self, value: str | None) -> Any:
+    def _deserialize(self, value: bytes | str | None) -> Any:
         if value is None:
             return None
+        # redis-py 8 decodes responses to bytes unless a decoder is configured;
+        # 7.x returned str. Accept both rather than depend on which side of that
+        # line the connected client sits.
+        if isinstance(value, bytes):
+            value = value.decode("utf-8", errors="replace")
         try:
             return json.loads(value)
         except TypeError, ValueError:
@@ -306,7 +311,7 @@ class RedisClient:
         """Increment a key."""
         client = self._ensure_connected()
         try:
-            return await client.incr(key)
+            return await cast(Awaitable[int], client.incr(key))
         except (RedisError, OSError, ConnectionError, TimeoutError) as e:
             logger.error("Error incr '%s': %s", key, e)
             return 0
